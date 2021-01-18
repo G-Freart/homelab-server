@@ -1,0 +1,86 @@
+# ------------------------------------------------------------------------------------------ #
+#                                                                                            #
+#                Copyright (c) 2021 - Gilles Freart. All right reserved                      #
+#                                                                                            #
+#  Licensed under the MIT License. See LICENSE in the project root for license information.  #
+#                                                                                            #
+# ------------------------------------------------------------------------------------------ #
+
+- name: This playbook ensures that Visual Studio Code has been installed
+  hosts: homelab_server
+
+  vars_files:
+    - vars/settings.yaml
+    
+  tasks:
+
+    - name: Homelab server - Visual Studio Code installation -- configure repo under CentoS
+      block:
+        - name: Homelab server - Visual Studio Code installation -- install repo under CentOS
+          shell:
+            cmd:          "rpm --import https://packages.microsoft.com/keys/microsoft.asc"
+            warn:         false
+          become:         true
+
+        - name: Homelab server - Visual Studio Code installation -- Creating the repo definition
+          copy:
+            dest:       /etc/yum.repos.d/vscode.repo
+            content: |
+              [code]
+              name=Visual Studio Code
+              baseurl=https://packages.microsoft.com/yumrepos/vscode
+              enabled=1
+              gpgcheck=1
+              gpgkey=https://packages.microsoft.com/keys/microsoft.asc                      
+          become:         true
+
+        - name: Homelab server - Visual Studio Code installation -- refresh yum cache
+          yum:
+            update_cache: yes
+          become:         true
+
+        - name: Homelab server - Visual Studio Code installation -- install/upgrade visual studio code
+          yum:
+            name:         code
+            state:        latest
+          become:         true
+
+      when: ansible_distribution == 'CentOS'
+
+    - name: Homelab server - Visual Studio Code installation -- configure repo under Ubuntu
+      block:
+        - name: Homelab server - Visual Studio Code installation -- Retreiving gpg key
+          shell:
+            cmd:          "wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /tmp/packages.microsoft.gpg"
+            warn:         false
+          become:         true
+
+        - name: Homelab server - Visual Studio Code installation -- Installing gpg key
+          shell:
+            cmd:          "install -o root -g root -m 644 /tmp/packages.microsoft.gpg /etc/apt/trusted.gpg.d/"
+          become:         true
+
+        - name: Homelab server - Visual Studio Code installation -- Creating the repo definition
+          copy:
+            dest:       /etc/apt/sources.list.d/vscode-stable.list
+            content:    'deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main'
+          become:         true
+
+        - name: Homelab server - Visual Studio Code installation -- install prerequisite
+          apt:
+            name:         apt-transport-https
+            state:        latest
+          become:         true
+
+        - name: Homelab server - Visual Studio Code installation -- refresh apt cache
+          shell:
+            cmd:          apt update
+          become:         true
+
+        - name: Homelab server - Visual Studio Code installation -- install/upgrade visual studio code
+          apt:
+            name:         code
+            state:        latest
+          become:         true
+
+      when: ansible_distribution == 'Ubuntu'

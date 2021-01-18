@@ -1,0 +1,63 @@
+- name: This playbook ensures that Skype For Linux has been installed
+  hosts: homelab_server
+
+  vars_files:
+    - vars/settings.yaml
+    
+  tasks:
+
+    - name: Homelab server - Skype for Linux installation -- configure repo under CentoS
+      block:
+        - name: Homelab server - Skype for Linux installation -- Retreiving skype rpm
+          shell:
+            cmd:          "curl -SLo /tmp/skypeforlinux-64.rpm https://go.skype.com/skypeforlinux-64.rpm"
+            warn:         false
+          become:         true
+
+        - name: Homelab server - Skype for Linux installation -- install skype for linux on CentOS 7
+          shell:
+            cmd:          "yum localinstall /tmp/skypeforlinux-64.rpm"
+            warn:         false
+          when:           ansible_distribution_major_version == "7"
+          become:         true
+
+        - name: Homelab server - Skype for Linux installation -- install skype for linux on CentOS 8
+          shell:
+            cmd:          "dnf -y install /tmp/skypeforlinux-64.rpm"
+            warn:         false
+          when:           ansible_distribution_major_version == "8"
+          become:         true
+
+      when: ansible_distribution == 'CentOS'
+
+    - name: Homelab server - Skype for Linux installation -- configure repo under Ubuntu
+      block:
+        - name: Homelab server - Skype for Linux installation -- Retreiving gpg key
+          shell:
+            cmd:          "wget -qO- https://repo.skype.com/data/SKYPE-GPG-KEY | gpg --dearmor > /tmp/skype-for-linux.gpg"
+            warn:         false
+          become:         true
+
+        - name: Homelab server - Skype for Linux installation -- Installing gpg key
+          shell:
+            cmd:          "install -o root -g root -m 644 /tmp/skype-for-linux.gpg /etc/apt/trusted.gpg.d/"
+          become:         true
+
+        - name: Homelab server - Skype for Linux installation -- Creating the repo definition
+          copy:
+            dest:       /etc/apt/sources.list.d/skype-stable.list
+            content:    'deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/skype-for-linux.gpg] https://repo.skype.com/deb stable main'
+          become:         true
+
+        - name: Homelab server - Skype for Linux installation -- refresh apt cache
+          shell:
+            cmd:          apt update
+          become:         true
+
+        - name: Homelab server - Skype for Linux installation -- install/upgrade skype for linux
+          apt:
+            name:         skypeforlinux
+            state:        latest
+          become:         true
+
+      when: ansible_distribution == 'Ubuntu'

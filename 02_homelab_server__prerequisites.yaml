@@ -1,0 +1,68 @@
+# ------------------------------------------------------------------------------------------ #
+#                                                                                            #
+#                Copyright (c) 2021 - Gilles Freart. All right reserved                      #
+#                                                                                            #
+#  Licensed under the MIT License. See LICENSE in the project root for license information.  #
+#                                                                                            #
+# ------------------------------------------------------------------------------------------ #
+
+- name: This playbook ensures that prerequisite has been installed 
+  hosts: homelab_server
+
+  vars_files:
+    - vars/settings.yaml
+    - group_vars/homelab_server/prerequisite_packages.yaml
+    
+  tasks:
+
+    - name : Homelab server - Prerequisites -- Apply prerequisites packages
+      block:
+        - name: Homelab server - Prerequisites -- Applying yum package if needed
+          yum:
+            name:   "{{ item.name }}"
+            state:  "{{ item.state }}"
+          loop:     "{{  prerequisite_packages[os].yum_list }}"
+          register: result
+          until:    result is succeeded
+          become:   true
+          when:     
+            - ansible_distribution == 'CentOS'
+            - prerequisite_packages[os].yum_list is defined
+
+        - name: Homelab server - Prerequisites -- Applying apt package if needed
+          apt:
+            name:   "{{ item.name }}"
+            state:  "{{ item.state }}"
+          loop:     "{{  prerequisite_packages[os].apt_list }}"
+          register: result
+          until:    result is succeeded
+          become:   true
+          when:     
+            - ansible_distribution == 'Ubuntu'
+            - prerequisite_packages[os].apt_list is defined
+
+        - name: Homelab server - Prerequisites -- Check if reboot is required under Debian like VMs
+          stat:
+            path: /var/run/reboot-required
+          register: reboot_required
+          when:     ansible_distribution == 'Ubuntu'
+          become:   true
+
+        - name: Homelab server - Prerequisites -- Check if reboot is required under Red Hat like VMs
+          shell:
+            cmd: needs-restarting -r
+          register: needs_restarting
+          when:     ansible_distribution == 'CentOS'
+          become:   true
+
+        - name: Homelab server - Prerequisite -- Reboot VMs if needed
+          reboot:
+            msg:               "Reboot initiated by Ansible as requested by /var/run/reboot-required or needs_restarting"
+            connect_timeout:   5
+            reboot_timeout:    120
+            pre_reboot_delay:  0
+            post_reboot_delay: 30
+            test_command:      whoami
+          become:   true
+          when: (reboot_required is defined and reboot_required.stat is defined and reboot_required.stat.exists)
+             or (needs_restarting is defined and needs_restarting.rc is defined and needs_restarting.rc != 0)

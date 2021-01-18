@@ -1,0 +1,45 @@
+- name: This playbook ensures that google chrome has been installed
+  hosts: homelab_server
+
+  vars_files:
+    - vars/settings.yaml
+    
+  tasks:
+
+    - name: Homelab server - google chrome installation -- configure repo under CentoS
+      block:
+        - name: Homelab server - google chrome installation -- Retreiving google chrome rpm
+          shell:
+            cmd:          "curl -SLo /tmp/google-chrome-stable_current_x86_64.rpm https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm"
+            warn:         false
+          become:         true
+
+        - name: Homelab server - google chrome installation -- install google chrome on CentOS 7
+          shell:
+            cmd:          "yum localinstall /tmp/google-chrome-stable_current_x86_64.rpm"
+            warn:         false
+          when:           ansible_distribution_major_version == "7"
+          become:         true
+
+        - name: Homelab server - google chrome installation -- install google chrome on CentOS 8
+          shell:
+            cmd:          "dnf -y install /tmp/google-chrome-stable_current_x86_64.rpm"
+            warn:         false
+          when:           ansible_distribution_major_version == "8"
+          become:         true
+
+      when: ansible_distribution == 'CentOS'
+
+    - name: Homelab server - google chrome installation -- configure repo under Ubuntu
+      block:
+        - name: Homelab server - google chrome installation -- retreive .deb under Ubuntu
+          get_url:
+            url:          "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb"
+            dest:         "/tmp/google-chrome-stable_current_amd64.deb"
+
+        - name: Homelab server - google chrome installation -- install .deb under Ubuntu
+          shell:
+            cmd:          "dpkg -i /tmp/google-chrome-stable_current_amd64.deb"
+          become:         true
+
+      when: ansible_distribution == 'Ubuntu'

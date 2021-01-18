@@ -1,0 +1,21 @@
+# ------------------------------------------------------------------------------------------ #
+#                                                                                            #
+#                Copyright (c) 2021 - Gilles Freart. All right reserved                      #
+#                                                                                            #
+#  Licensed under the MIT License. See LICENSE in the project root for license information.  #
+#                                                                                            #
+# ------------------------------------------------------------------------------------------ #
+
+#
+# Following settings are overridable using extra parameter when executing ansible-playbook 
+#
+
+servername:                     orion
+domain:                         home.local
+fqdn:                           orion.home.local
+os:                             "Ubuntu 20.04"
+username:                       gilfre5
+keymap:                         be-latin1
+x11_keymap_layout:              be
+x11_keymap_model:               pc105
+timezone:                       Europe/Brussels

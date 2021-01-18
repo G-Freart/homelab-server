@@ -1,0 +1,123 @@
+- name: This playbook ensures that AMD GPU Radeon driver has been installed
+  hosts: homelab_server
+
+  vars_files:
+    - vars/settings.yaml
+    
+  tasks:
+
+    - name: Homelab server - AMDGPU PRO Driver installation Check
+      block:
+        - name: Homelab server - AMD/ATI Ellesmere chipset Check
+          shell:
+            cmd:         "lspci | grep -e '\\[AMD/ATI\\] Ellesmere' | wc -l"
+          register:      amd_ati_ellesmere
+
+        - name: Homelab server - AMDGPU Driver installation Check
+          shell:
+            cmd:         which amdgpu-uninstall
+          register:      amdgpu_uninstall
+          failed_when:   amdgpu_uninstall.rc not in [ 0, 1 ]
+
+        - name: Homelab server - AMDGPU PRO Driver installation Check
+          shell:
+            cmd:         which amdgpupro-uninstall
+          register:      amdgpupro_uninstall
+          failed_when:   amdgpupro_uninstall.rc not in [ 0, 1 ]
+
+    - name: Homelab server - AMDGPU PRO Driver installation Under CentOS 7
+      block:
+        - name: Homelab server - AMDGPU PRO Driver installation -- Retrieving AMDGPU PRO Driver related to CentOS 7
+          get_url:
+            url:          https://drivers.amd.com/drivers/linux/amdgpu-pro-20.45-1188099-rhel-7.9.tar.xz
+            dest:         /tmp/amdgpu-pro-20.45-1188099-rhel-7.9.tar.xz
+            headers:      
+              Referer:    "https://www.amd.com/en/support/kb/release-notes/rn-amdgpu-unified-linux-20-45"
+
+        - name: Homelab server - AMDGPU PRO Driver installation -- Creating unpacking directory
+          file:
+            state:       directory
+            path:        "/tmp/amdgpu-pro-20.45-1188099-rhel-7.9"
+
+        - name: Homelab server - AMDGPU PRO Driver installation -- Unpacking driver archive
+          shell:
+            cmd:          "tar xvf /tmp/amdgpu-pro-20.45-1188099-rhel-7.9.tar.xz --directory /tmp"
+            warn:         false
+
+        - name: Homelab server - AMDGPU PRO Driver installation -- Installing driver
+          shell:
+            chdir:        "/tmp/amdgpu-pro-20.45-1188099-rhel-7.9"
+            cmd:          "echo Y | ./amdgpu-install --no-dkms"
+          become:         yes
+
+      when: 
+        - ansible_distribution == 'CentOS' 
+        - ansible_distribution_major_version == "7"
+        - amdgpu_uninstall.rc == 1
+        - amdgpupro_uninstall.rc == 1
+        - amd_ati_ellesmere.stdout != "0"
+
+    - name: Homelab server - AMDGPU PRO Driver installation Under CentOS 8
+      block:
+        - name: Homelab server - AMDGPU PRO Driver installation -- Retrieving AMDGPU PRO Driver related to CentOS 8
+          get_url:
+            url:          https://drivers.amd.com/drivers/linux/amdgpu-pro-20.45-1188099-rhel-8.2.tar.xz
+            dest:         /tmp/amdgpu-pro-20.45-1188099-rhel-8.2.tar.xz
+            headers:      
+              Referer:    "https://www.amd.com/en/support/kb/release-notes/rn-amdgpu-unified-linux-20-45"
+
+        - name: Homelab server - AMDGPU PRO Driver installation -- Creating unpacking directory
+          file:
+            state:       directory
+            path:        "/tmp/amdgpu-pro-20.45-1188099-rhel-8.2"
+
+        - name: Homelab server - AMDGPU PRO Driver installation -- Unpacking driver archive
+          shell:
+            cmd:          "tar xvf /tmp/amdgpu-pro-20.45-1188099-rhel-8.2.tar.xz --directory /tmp"
+            warn:         false
+
+        - name: Homelab server - AMDGPU PRO Driver installation -- Installing driver
+          shell:
+            chdir:        "/tmp/amdgpu-pro-20.45-1188099-rhel-8.2"
+            cmd:          "echo Y | ./amdgpu-install --no-dkms"
+          become:         yes
+
+      when: 
+        - ansible_distribution == 'CentOS' 
+        - ansible_distribution_major_version == "8"
+        - amdgpu_uninstall.rc == 1
+        - amdgpupro_uninstall.rc == 1
+        - amd_ati_ellesmere.stdout != "0"
+
+    - name: Homelab server - AMDGPU PRO Driver installation Under Ubuntu
+      block:
+        - name: Homelab server - AMDGPU PRO Driver installation -- Retrieving AMDGPU PRO Driver related to Ubuntu 20.04
+          get_url:
+            url:          https://drivers.amd.com/drivers/linux/amdgpu-pro-20.45-1188099-ubuntu-20.04.tar.xz
+            dest:         /tmp/amdgpu-pro-20.45-1188099-ubuntu-20.04.tar.xz
+            headers:      
+              Referer:    "https://www.amd.com/en/support/kb/release-notes/rn-amdgpu-unified-linux-20-45"
+
+        - name: Homelab server - AMDGPU PRO Driver installation -- Creating unpacking directory
+          file:
+            state:       directory
+            path:        "/tmp/amdgpu-pro-20.45-1188099-ubuntu-20.04"
+
+        - name: Homelab server - AMDGPU PRO Driver installation -- Unpacking driver archive
+          shell:
+            cmd:          "tar xvf /tmp/amdgpu-pro-20.45-1188099-ubuntu-20.04.tar.xz --directory /tmp"
+            warn:         false
+
+        - name: Homelab server - AMDGPU PRO Driver installation -- Installing driver
+          shell:
+            chdir:        "/tmp/amdgpu-pro-20.45-1188099-ubuntu-20.04"
+            cmd:          "echo Y | ./amdgpu-install --no-dkms"
+          become:         yes
+
+      when: 
+        - ansible_distribution == 'Ubuntu' 
+        - ansible_distribution_version == "20.04"
+        - amdgpu_uninstall.rc == 1
+        - amdgpupro_uninstall.rc == 1
+        - amd_ati_ellesmere.stdout != "0"
+

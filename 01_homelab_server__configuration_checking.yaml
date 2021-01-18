@@ -1,0 +1,35 @@
+# ------------------------------------------------------------------------------------------ #
+#                                                                                            #
+#                Copyright (c) 2021 - Gilles Freart. All right reserved                      #
+#                                                                                            #
+#  Licensed under the MIT License. See LICENSE in the project root for license information.  #
+#                                                                                            #
+# ------------------------------------------------------------------------------------------ #
+
+- name: This playbook checks the configuration before installing
+  hosts: homelab_server
+
+  vars_files:
+    - vars/settings.yaml
+
+  tasks:
+
+    - name: Homelab server - Configuration checking -- Check ansible minimum version
+      fail:
+        msg: 'Your ansible version should be at least 2.9.0 but was {{ ansible_version.full  }}'
+      when: ansible_version.full is version('2.9.0', '<')
+
+    - name: Homelab server - Configuration checking -- Check if host distribution is supported
+      fail:
+        msg: 'Your hosting distribution ({{ansible_distribution}} {{ansible_distribution_version}}) is actually unsupported'
+      when: 
+        - not (ansible_distribution == 'Ubuntu' and ansible_distribution_version == '20.04' )
+        - not (ansible_distribution == 'CentOS' and ansible_distribution_version ==     '8' ) 
+
+    - name: Homelab server - Configuration checking -- Show current os
+      debug:
+        var: os
+        
+    - name: Homelab server - Configuration checking -- Show current username
+      debug:
+        var: username

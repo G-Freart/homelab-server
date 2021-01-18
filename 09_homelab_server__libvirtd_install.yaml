@@ -1,0 +1,229 @@
+- name: This playbook ensures that libvirt has been installed
+  hosts: homelab_server
+
+  vars_files:
+    - vars/settings.yaml
+    
+  tasks:
+
+    - name: Homelab server - libvirtd installation -- Check Server Support Hardware Virtualization
+      shell:
+        cmd:              grep -E -c "vmx|svm" /proc/cpuinfo
+      register:           hypervisor_core
+
+    - name: Homelab server - libvirtd installation
+      block:
+        - name: Homelab server - libvirtd installation -- Install package under CentOS
+          yum:
+            name:
+             - qemu-kvm 
+             - qemu-img
+             - libvirt-client
+             - libvirt-daemon-kvm
+             - libvirt
+             - virt-manager 
+             - virt-install
+          become:         true
+
+        - name: Homelab server - libvirtd installation -- Ensuring selinux configuration under CentOS
+          shell:
+            cmd:          restorecon -rv /var/lib/libvirt
+          become:         true
+
+        - name: Homelab server - libvirtd installation -- Starting libvirt under CentOS
+          shell:
+            cmd:          systemctl start libvirtd
+          become:         true
+
+      when: 
+        - hypervisor_core.stdout != "0"
+        - ansible_distribution == 'CentOS'
+
+    - name: Homelab server - libvirtd installation
+      block:
+        - name: Homelab server - libvirtd installation -- Install package under Ubuntu
+          apt:
+            name:
+             - qemu 
+             - qemu-kvm 
+             - libvirt-clients 
+             - libvirt-daemon 
+             - bridge-utils 
+             - virt-manager 
+             - virtinst
+          become:         true
+
+      when: 
+        - hypervisor_core.stdout != "0"
+        - ansible_distribution == 'Ubuntu'
+
+    - name: Homelab server - libvirtd installation -- Adding user to libvirt group
+      shell:
+        cmd:               "usermod -a -G libvirt {{ username }}"
+      become:              true
+
+    - name: Homelab server - libvirtd installation -- Check if we have now the right group
+      shell:
+        cmd:               "groups | grep -e 'libvirt' | wc -l"
+      register:            libvirt_group_owned
+
+    - name: Homelab server - libvirtd installation -- Check if reboot is needed
+      reboot:
+        msg:               "Reboot needed to obtain right related to libvirt group"
+        connect_timeout:   5
+        reboot_timeout:    120
+        pre_reboot_delay:  0
+        post_reboot_delay: 30
+        test_command:      whoami
+      become:              true
+      when:                libvirt_group_owned.stdout == "0"
+
+    - name: Homelab server - libvirtd installation -- libvirt configuration
+      block:
+
+        - name: Homelab server - libvirtd installation -- Check if default network is inactive
+          shell:
+            cmd:          virsh net-list --name --inactive | grep default | wc -l
+          register:       default_inactive
+          become:         true
+
+        - name: Homelab server - libvirtd installation -- Start default network if inactive
+          shell:
+            cmd:          virsh net-start default
+          when:           default_inactive.stdout == "1"
+          become:         true
+
+        - name: Homelab server - libvirtd installation -- Check if default network is active
+          shell:
+            cmd:          virsh net-list --name | grep default | wc -l
+          register:       default_active
+          become:         true
+
+        - name: Homelab server - libvirtd installation -- Stop the default network
+          shell:
+            cmd:          virsh net-destroy default
+          when:           default_active.stdout == "1"
+          become:         true
+
+        - name: Homelab server - libvirtd installation -- Delete the default network
+          shell:
+            cmd:          virsh net-undefine default
+          when:           default_active.stdout == "1"
+          become:         true
+
+        - name: Homelab server - libvirtd installation -- Disable netfilter on bridge
+          copy:
+            src:          files/libvirt/bridge.conf
+            dest:         /etc/sysctl.d/bridge.conf
+          become:         true
+    
+        - name: Homelab server - libvirtd installation -- Installing rules
+          copy:
+            dest:         /etc/udev/rules.d/99-bridge.rules
+            content: |
+              ACTION=="add", SUBSYSTEM=="module", KERNEL=="br_netfilter", RUN+="/sbin/sysctl -p /etc/sysctl.d/bridge.conf"
+          become:         true
+    
+        - name: Homelab server - libvirtd installation - network configuration
+          block:
+
+            - name: Homelab server - libvirtd installation -- Commenting original netplan file under Ubuntu
+              shell:
+                cmd:          "sed -i 's/^/## /g' /etc/netplan/01-network-manager-all.yaml && sed -i 's/^## ## /## /g' /etc/netplan/01-network-manager-all.yaml"
+                warn:         false
+              become:         true
+    
+            - name: Homelab server - libvirtd installation -- Creating new netplan under Ubuntu
+              copy:
+                src:          files/libvirt/00-netcfg.yaml 
+                dest:         /etc/netplan/00-netcfg.yaml 
+              become:         true
+              
+            - name: Homelab server - libvirtd installation -- Applying netplan under Ubuntu
+              shell:
+                cmd:          "netplan apply"
+              become:         true
+    
+          when: 
+            - ansible_distribution == 'Ubuntu'
+
+        - name: Homelab server - libvirtd installation - network configuration
+          block:
+
+            - name: Homelab server - libvirtd installation - Setup bridge under CentoS
+              shell:
+                cmd:          sh files/libvirt/nmcli-netcfg.sh
+              become:         true
+    
+          when: 
+            - ansible_distribution == 'CentOS'
+
+        - name: Homelab server - libvirtd installation -- Restarting NetworkManager
+          shell:
+            cmd:          "systemctl restart NetworkManager"
+          become:         true
+
+        - name: Homelab server - libvirtd installation -- Check if host-bridge network exists
+          shell:
+            cmd:          virsh net-list --name --all | grep host-bridge | wc -l
+          register:       host_bridge
+          become:         true
+
+        - name: Homelab server - libvirtd installation -- Creating host-bridge 
+          block:
+
+            - name: Homelab server - libvirtd installation -- Create host-bridge if needed
+              shell:
+                cmd:      "virsh net-define files/libvirt/host-bridge.xml"
+
+            - name: Homelab server - libvirtd installation -- Configure host-bridge network as autostarting
+              shell:
+                cmd:      "virsh net-autostart host-bridge"
+
+            - name: Homelab server - libvirtd installation -- Starting host-bridge network 
+              shell:
+                cmd:      "virsh net-start host-bridge"
+
+            - name: >
+                    Homelab server - libvirtd installation -- Avoiding https://github.com/dmacvicar/terraform-provider-libvirt/issues/546 ... 
+                    To investigate later with https://libvirt.org/drvqemu.html -> Driver security architecture
+              shell:
+                cmd:      "sed -i 's/^#security_driver = \"selinux\".*/security_driver = \"none\"/g' /etc/libvirt/qemu.conf"
+                warn:     false
+
+            - name: Homelab server - libvirtd installation -- Restarting libvirtd 
+              shell:
+                cmd:      "systemctl restart libvirtd"
+
+          when:           host_bridge.stdout == "0"
+          become:         true
+
+        - name: Homelab server - libvirtd installation -- Check if NetworkManager is configured for local DNS Under CentOS
+          stat:
+            path:         /etc/NetworkManager/conf.d/localdns.conf
+          register:       localdns
+          when:           ansible_distribution == 'CentOS'
+
+        - name: Homelab server - libvirtd installation -- Configuring local DNS
+          block:
+
+            - name: Homelab server - libvirtd installation -- Configure NetworkManager for local DNS Under CentOS
+              copy:
+                src:      files/libvirt/localdns.conf
+                dest:     /etc/NetworkManager/conf.d/localdns.conf
+
+            - name: Homelab server - libvirtd installation -- Restarting NetworkManager if needed Under CentOS
+              shell:
+                cmd:      "systemctl restart NetworkManager"
+
+            - name: Homelab server - libvirtd installation -- Restarting Libvirtd if needed Under CentOS
+              shell:
+                cmd:      "systemctl restart libvirtd"
+
+          become:         true
+          when:           
+            - ansible_distribution == 'CentOS'
+            - localdns.stat.exists == False
+
+      when: 
+        - hypervisor_core.stdout != "0"

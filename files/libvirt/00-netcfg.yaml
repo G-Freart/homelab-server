@@ -1,0 +1,33 @@
+# ------------------------------------------------------------------------------------------ #
+#                                                                                            #
+#                Copyright (c) 2021 - Gilles Freart. All right reserved                      #
+#                                                                                            #
+#  Licensed under the MIT License. See LICENSE in the project root for license information.  #
+#                                                                                            #
+# ------------------------------------------------------------------------------------------ #
+
+network:
+  ethernets:
+    eno1:
+      dhcp4: no
+      dhcp6: no
+
+    eno2:
+      dhcp4: no
+      dhcp6: no
+
+  bridges:
+    virbr0:
+      interfaces: [eno1]
+      addresses: [192.168.0.51/24]
+      gateway4: 192.168.0.1
+      mtu: 1500
+      nameservers:
+        addresses: [192.168.0.50, 8.8.8.8, 8.8.4.4]
+        search: [home.local]
+      parameters:
+        stp: true
+        forward-delay: 4
+      dhcp4: no
+      dhcp6: no
+  version: 2

@@ -1,0 +1,77 @@
+# ------------------------------------------------------------------------------------------ #
+#                                                                                            #
+#                Copyright (c) 2021 - Gilles Freart. All right reserved                      #
+#                                                                                            #
+#  Licensed under the MIT License. See LICENSE in the project root for license information.  #
+#                                                                                            #
+# ------------------------------------------------------------------------------------------ #
+
+- name: This playbook ensures that base setting has been configured
+  hosts: homelab_server
+
+  vars_files:
+    - vars/settings.yaml
+    
+  tasks:
+
+    - name:     Homelab server - Base Settings -- Retreive current timezone
+      shell:    
+        cmd:    "timedatectl | grep 'Time zone' | sed -e 's/.*: //' | sed -e 's/ (.*$//'"
+        warn:   false
+      register: current_timezone
+
+    - name:     Homelab server - Base Settings -- Updating current timezone if needed
+      shell:
+        cmd:    "timedatectl set-timezone {{ timezone }}"
+      become:   true
+      when:     current_timezone.stdout != timezone
+
+    - name:     Homelab server - Base Settings -- Retreive current keymap
+      shell:    
+        cmd:    "localectl  | grep 'VC Keymap' | sed -e 's/.*: //'"
+        warn:   false
+      register: current_keymap
+
+    - name:     Homelab server - Base Settings -- Updating current keymap if needed
+      shell:
+        cmd:    "localectl set-keymap {{ keymap }}"
+      become:   true
+      when:     current_keymap.stdout != keymap
+
+    - name:     Homelab server - Base Settings -- Retreive current x11 keymap layout
+      shell:    
+        cmd:    "localectl  | grep 'X11 Layout' | sed -e 's/.*: //'"
+        warn:   false
+      register: current_x11_keymap_layout
+
+    - name:     Homelab server - Base Settings -- Retreive current x11 keymap model
+      shell:    
+        cmd:    "localectl  | grep 'X11 Model' | sed -e 's/.*: //'"
+        warn:   false
+      register: current_x11_keymap_model
+
+    - name:     Homelab server - Base Settings -- Updating current x11 keymap if needed
+      shell:
+        cmd:    "localectl set-x11-keymap {{ x11_keymap_layout }} {{ x11_keymap_model  }}"
+      become:   true
+      when:     current_x11_keymap_layout.stdout != x11_keymap_layout or current_x11_keymap_model.stdout != x11_keymap_model
+
+    - name:     Homelab server - Base Settings -- Retreive current hostmane
+      shell:    
+        cmd:    "hostnamectl | grep 'Static hostname' | sed -e 's/.*: //'"
+        warn:   false
+      register: current_hostname
+
+    - name:     Homelab server - Base Settings -- Updating current hostname if needed
+      shell:
+        cmd:    "hostnamectl set-hostname {{ fqdn }}"
+      become:   true
+      when:     current_hostname.stdout != fqdn
+
+    - name:     Homelab server - Base Settings -- Updating /etc/hosts if needed
+      shell:
+        cmd:    "sed -i 's/^127.*{{ current_hostname.stdout }}.*$/127.0.1.1\t{{ servername }} {{ fqdn }}/g' /etc/hosts"
+        warn:   false
+      become:   true
+      when:     current_hostname.stdout != fqdn
+

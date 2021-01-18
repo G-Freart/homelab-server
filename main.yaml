@@ -1,0 +1,17 @@
+# ------------------------------------------------------------------------------------------ #
+#                                                                                            #
+#                Copyright (c) 2021 - Gilles Freart. All right reserved                      #
+#                                                                                            #
+#  Licensed under the MIT License. See LICENSE in the project root for license information.  #
+#                                                                                            #
+# ------------------------------------------------------------------------------------------ #
+
+- import_playbook: 01_homelab_server__configuration_checking.yaml
+- import_playbook: 02_homelab_server__prerequisites.yaml
+- import_playbook: 03_homelab_server__base_settings.yaml
+- import_playbook: 04_homelab_server__dotnet_sdk_install.yaml
+- import_playbook: 05_homelab_server__vscode_install.yaml
+- import_playbook: 06_homelab_server__skype_install.yaml
+- import_playbook: 07_homelab_server__chrome_install.yaml
+- import_playbook: 08_homelab_server__amdgpupro_install.yaml
+- import_playbook: 09_homelab_server__libvirtd_install.yaml
