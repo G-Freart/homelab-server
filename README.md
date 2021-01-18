@@ -2,7 +2,7 @@
 
 This ansible repo is in charge to perform the initial configuration of my homelab server.
 
-It will execute the following operation :
+It will execute following operations :
 
 * Check if the Operating System and the ansible version is supported by the setup
 * Install my survival kit 
