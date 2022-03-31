@@ -39,6 +39,12 @@
             state:        latest
           become:         true
 
+        - name: Homelab server - dotnet sdk installation -- install/upgrade the dotnet sdk 6.0
+          yum:
+            name:         dotnet-sdk-6.0
+            state:        latest
+          become:         true
+
       when: ansible_distribution == 'CentOS'
 
     - name: Homelab server - dotnet sdk installation -- configure repo under Ubuntu
@@ -67,6 +73,12 @@
         - name: Homelab server - dotnet sdk installation -- install/upgrade the dotnet sdk 5.0
           apt:
             name:         dotnet-sdk-5.0
+            state:        latest
+          become:         true
+
+        - name: Homelab server - dotnet sdk installation -- install/upgrade the dotnet sdk 6.0
+          apt:
+            name:         dotnet-sdk-6.0
             state:        latest
           become:         true
 
